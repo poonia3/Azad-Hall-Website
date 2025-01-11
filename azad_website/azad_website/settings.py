@@ -93,7 +93,7 @@ WSGI_APPLICATION = "azad_website.wsgi.application"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {}
-if os.getenv("DATABASE") == "clou":
+if os.getenv("DATABASE") == "cloud":
     DATABASES = {
         "default": {
             "ENGINE": os.getenv("DB_ENGINE"),

@@ -64,6 +64,26 @@ def import_from_excel(request):
         return render(request, "index.html")
 
 
+def importBoardersFromExcel(request):
+    if request.method == "POST":
+        excel_file = request.FILES["excel_file"]
+        wb = load_workbook(excel_file)
+        ws = wb.active
+
+        azad_boarders_to_create = []
+
+        for row in ws.iter_rows(values_only=True):
+            roll_no, name, email, number = row
+            azad_boarder = azad_boarders(
+                name=name, roll_no=roll_no, emails=email, contact=number, books=0
+            )
+            azad_boarders_to_create.append(azad_boarder)
+
+        # Use bulk_create to create objects in bulk
+        azad_boarders.objects.bulk_create(azad_boarders_to_create)
+
+        return render(request, "index.html")
+
 # For books
 def importBooksFromExcel(request):
     if request.method == "POST":

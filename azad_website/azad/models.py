@@ -44,12 +44,12 @@ class UserForm(forms.Form):
     )
 
 class azad_boarders(models.Model):
-    roll_no=models.CharField(max_length=15)
-    name=models.CharField(max_length=500)
+    roll_no=models.CharField(max_length=15, blank=True, null=True)
+    name=models.CharField(max_length=500, blank=True, null=True)
     emails=models.EmailField()
-    contact=models.CharField(max_length=12, null=True)
-    books=models.IntegerField(null=True)
-    role=models.CharField(max_length=500)
+    contact=models.CharField(max_length=12, null=True, blank=True)
+    books=models.IntegerField(default=0, blank=True, null=True)
+    role=models.CharField(default="boarder", max_length=500)
     
 class complaints(models.Model):
     name=models.CharField(max_length=500)

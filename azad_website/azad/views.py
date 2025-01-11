@@ -21,7 +21,7 @@ from django.utils.timezone import make_aware
 
 allowedEmailsecratary = True
 
-allowedEmailsNotice = ["arnabdas.9039@gmail.com"]
+allowedEmailsNotice = ["arnabdas.9039@gmail.com", "gladiator098123@gmail.com",]
 allowedEmails = [
     "harsh247gupta@gmail.com",
     "harsh90731@gmail.com",
@@ -30,6 +30,7 @@ allowedEmails = [
     "sg06959.sgsg@gmail.com",
     "pooniakushagra20@gmail.com",
     "somnathmishra1802@gmail.com",
+    "gladiator098123@gmail.com",
 ]
 allowedEmailsLibrary = [
     "harsh247gupta@gmail.com",
@@ -40,6 +41,7 @@ allowedEmailsLibrary = [
     "sg06959.sgsg@gmail.com",
     "pranjalchouhan2014@gmail.com",
     "somnathmishra1802@gmail.com",
+    "gladiator098123@gmail.com",
 ]
 
 
@@ -568,7 +570,7 @@ def previousBookRequests(request):
     messages.info(request, "Please login with valid ID to access library records")
     return redirect("/")
 
-
+@csrf_protect
 def approve(request):
     if request.user.is_authenticated and request.user.email in allowedEmailsLibrary:
         if request.method == "POST":
@@ -581,32 +583,50 @@ def approve(request):
             Book.save()
             return redirect("/checkedOutBooks")
 
-
+@csrf_protect
 def checkIn(request):
     if request.user.is_authenticated and request.user.email in allowedEmailsLibrary:
         if request.method == "POST":
             id = request.POST.get("id")
             RequestedBook = requestedBook.objects.get(id=id)
+            if not RequestedBook:
+                messages.info(request, "Requested Book not found")
+                return redirect("/checkedOutBooks")
             Book = book.objects.get(id=RequestedBook.bookID)
+            if not Book:
+                messages.info(request, "Book not found")
+                return redirect("/checkedOutBooks")
             Book.available += 1
             Book.save()
             boarder = azad_boarders.objects.get(emails=RequestedBook.email)
+            if not boarder:
+                messages.info(request, "Boarder not found")
+                return redirect("/checkedOutBooks")
             boarder.books -= 1
             boarder.save()
             RequestedBook.delete()
             return redirect("/checkedOutBooks")
+        return redirect("/checkedOutBooks")
 
-
+@csrf_protect
 def cancelBookRequest(request):
-    id = request.POST.get("id")
-    RequestedBook = requestedBook.objects.get(id=id)
-    boarder = azad_boarders.objects.get(emails=RequestedBook.email)
-    boarder.books -= 1
-    boarder.save()
-    Book = book.objects.get(id=RequestedBook.bookID)
-    Book.available += 1
-    Book.save()
-    RequestedBook.delete()
+    if request.method=="POST" and request.user.is_authenticated:
+        id = request.POST.get("id")
+        RequestedBook = requestedBook.objects.get(id=id)
+        if not RequestedBook:
+            messages.info(request, "Requested Book not found")
+            return redirect("/previousBookRequests")
+        boarder = azad_boarders.objects.get(emails=RequestedBook.email)
+        if not boarder:
+            messages.info(request, "Boarder not found")
+            return redirect("/previousBookRequests")
+        boarder.books -= 1
+        boarder.save()
+        Book = book.objects.get(id=RequestedBook.bookID)
+        Book.available += 1
+        Book.save()
+        RequestedBook.delete()
+        return redirect("/previousBookRequests")
     return redirect("/previousBookRequests")
 
 

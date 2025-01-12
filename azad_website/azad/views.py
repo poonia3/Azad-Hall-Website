@@ -2,7 +2,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from .models import *
-from .forms import ContactForm, CommentForm, ComplaintForm
+from .forms import ContactForm, CommentForm, ComplaintForm, LibraryDutyForm
 from django.core.mail import BadHeaderError, send_mail
 from django.http import JsonResponse
 from django.core import serializers
@@ -15,13 +15,23 @@ from django.contrib import messages
 from django.core.paginator import Paginator, Page
 from django.views.decorators.csrf import csrf_protect
 from datetime import datetime
+from django.conf import settings
 import requests
 import base64
 from django.utils.timezone import make_aware
 
-allowedEmailsecratary = True
+allowedEmailSecratary = [
+    "gladiator098123@gmail.com",
+    "arnabdas.9039@gmail.com",
+    "pooniakushagra20@gmail.com",
+]
 
-allowedEmailsNotice = ["arnabdas.9039@gmail.com", "gladiator098123@gmail.com",]
+allowedEmailsNotice = [
+    "arnabdas.9039@gmail.com",
+    "gladiator098123@gmail.com",
+    "pooniakushagra20@gmail.com",
+]
+
 allowedEmails = [
     "harsh247gupta@gmail.com",
     "harsh90731@gmail.com",
@@ -30,7 +40,9 @@ allowedEmails = [
     "sg06959.sgsg@gmail.com",
     "pooniakushagra20@gmail.com",
     "somnathmishra1802@gmail.com",
+    "arnabdas.9039@gmail.com",
     "gladiator098123@gmail.com",
+    "aryandongre53@gmail.com",
 ]
 allowedEmailsLibrary = [
     "harsh247gupta@gmail.com",
@@ -41,29 +53,10 @@ allowedEmailsLibrary = [
     "sg06959.sgsg@gmail.com",
     "pranjalchouhan2014@gmail.com",
     "somnathmishra1802@gmail.com",
+    "arnabdas.9039@gmail.com",
     "gladiator098123@gmail.com",
+    "aryandongre53@gmail.com",
 ]
-
-
-def import_from_excel(request):
-    if request.method == "POST":
-        excel_file = request.FILES["excel_file"]
-        wb = load_workbook(excel_file)
-        ws = wb.active
-
-        azad_boarders_to_create = []
-
-        for row in ws.iter_rows(values_only=True):
-            roll_no, name, email, number = row
-            azad_boarder = azad_boarders(
-                name=name, roll_no=roll_no, emails=email, contact=number, books=0
-            )
-            azad_boarders_to_create.append(azad_boarder)
-
-        # Use bulk_create to create objects in bulk
-        azad_boarders.objects.bulk_create(azad_boarders_to_create)
-
-        return render(request, "index.html")
 
 
 def importBoardersFromExcel(request):
@@ -71,20 +64,14 @@ def importBoardersFromExcel(request):
         excel_file = request.FILES["excel_file"]
         wb = load_workbook(excel_file)
         ws = wb.active
-
         azad_boarders_to_create = []
-
         for row in ws.iter_rows(values_only=True):
-            roll_no, name, email, number = row
-            azad_boarder = azad_boarders(
-                name=name, roll_no=roll_no, emails=email, contact=number, books=0
-            )
+            azad_boarder = azad_boarders(emails=row[0], books=0)
             azad_boarders_to_create.append(azad_boarder)
-
-        # Use bulk_create to create objects in bulk
         azad_boarders.objects.bulk_create(azad_boarders_to_create)
 
         return render(request, "index.html")
+
 
 # For books
 def importBooksFromExcel(request):
@@ -92,7 +79,6 @@ def importBooksFromExcel(request):
         excel_file = request.FILES["excel_file"]
         wb = load_workbook(excel_file)
         ws = wb.active
-
         books_to_create = []
 
         for row in ws.iter_rows(values_only=True):
@@ -105,8 +91,6 @@ def importBooksFromExcel(request):
                 available=row[4],
             )
             books_to_create.append(book1)
-
-        # Use bulk_create to create objects in bulk
         book.objects.bulk_create(books_to_create)
 
         return render(request, "index.html")
@@ -121,7 +105,7 @@ def addBooks(request):
         email = request.user.email
         if email in allowedEmails:
             return render(request, "addBooks.html")
-    messages.info(request, "Please login with valid ID to add boarders")
+    messages.info(request, "Please login with valid ID to add books")
     return redirect("/")
 
 
@@ -148,15 +132,13 @@ def index(request):
                 params = {"name": name}
                 return render(request, "index.html", params)
         logout(request)
-        message = "Please login with valid EmailID"
-        params = {"message": message}
-        return render(request, "index.html", params)
+        messages.info(request, "Please login with valid EmailID")
+        return render(request, "index.html")
 
     return render(request, "index.html")
 
 
 @csrf_protect
-# Helper function to upload files to ImageKit
 def upload_file_to_imagekit(api_key, file, file_name):
     """
     Upload a file to ImageKit.io V2 API.
@@ -341,7 +323,6 @@ def submit_complain(request):
             # Handle image upload via ImageKit
             if "upload_image" in request.FILES:
                 upload_image = request.FILES["upload_image"]
-                api_key = "private_iXnU83xFLdR99tM9YEFMOQLuwus="
 
                 # Read the uploaded file as binary
                 response = upload_file_to_imagekit(
@@ -377,44 +358,47 @@ def noticeboard(request):
 
 @csrf_protect
 def noticeadd(request):
-    if request.method == "POST" and request.user.is_authenticated:
+    if request.user.is_authenticated:
         email = request.user.email
         if email in allowedEmailsNotice:
-            title = request.POST.get("title")
-            subtitle = request.POST.get("subtitle")
-            description = request.POST.get("description")
-            image_link = request.POST.get("image")
-            event_date_time = request.POST.get("event")
-            issue_date_time = datetime.now()
-            author = request.POST.get("author")
-            Notice.objects.create(
-                title=title,
-                subtitle=subtitle,
-                description=description,
-                image=image_link,
-                event_date_time=event_date_time,
-                issue_date_time=make_aware(issue_date_time),
-                author=author,
-            )
-            users = list(User.objects.all())
-            if not users:
-                messages.info(request, "Recipients not found")
-            emails = [user.email for user in users]
-            try:
-                send_mail(
-                    subject=title,
-                    message=description,
-                    from_email="arnabdas.9039@gmail.com",
-                    recipient_list=emails,
-                    fail_silently=False,
+            if request.method == "POST":
+                title = request.POST.get("title")
+                subtitle = request.POST.get("subtitle")
+                description = request.POST.get("description")
+                image_link = request.POST.get("image")
+                event_date_time = request.POST.get("event")
+                issue_date_time = datetime.now()
+                author = request.POST.get("author")
+                Notice.objects.create(
+                    title=title,
+                    subtitle=subtitle,
+                    description=description,
+                    image=image_link,
+                    event_date_time=event_date_time,
+                    issue_date_time=make_aware(issue_date_time),
+                    author=author,
                 )
-                messages.info(request, "Notice posted and emailed successfully")
-            except BadHeaderError:
-                messages.info(request, "Notice posted successfully")
-            return redirect("/noticeboard")
-        messages.info(request, "Please login with valid ID.")
+                users = list(User.objects.all())
+                if not users:
+                    messages.info(request, "Recipients not found")
+                emails = [user.email for user in users]
+                try:
+                    send_mail(
+                        subject=title,
+                        message=description,
+                        from_email="settings.EMAIL_HOST_USER",
+                        recipient_list=emails,
+                        fail_silently=False,
+                    )
+                    messages.info(request, "Notice posted and emailed successfully")
+                except BadHeaderError:
+                    messages.info(request, "Notice posted successfully")
+                return redirect("/noticeboard")
+            return render(request, "addnotice.html")
+        messages.info(request, "Not Allowed")
         return redirect("/")
-    return render(request, "addnotice.html")
+    messages.info(request, "Please login with valid ID.")
+    return redirect("/")
 
 
 def achievements(request):
@@ -453,9 +437,6 @@ def library(request, searchedBooks=None, str=None):
             books = book.objects.all().order_by("id")
         books_paginator = Paginator(books, 30)
         current_page_books = books_paginator.page(request.GET.get("books_page", 1))
-        # message=None
-        # if checkout:
-        #     message="Request submitted successfully"
         context = {
             "books": current_page_books,
             "searchedString": str,
@@ -481,7 +462,7 @@ def checkout(request):
                 department=Book.department,
                 shelf=Book.shelf,
                 studentName=boarder.name,
-                studentRoll_no=boarder.roll_no,
+                studentContact=boarder.contact,
                 email=boarder.emails,
                 created_at=t_string,
                 status="requested",
@@ -494,9 +475,6 @@ def checkout(request):
         else:
             messages.info(request, "You can only apply for 2 books at a time")
             return redirect("/library")
-
-        # print(book)
-        # messages.info(request, "Request submitted successfully")
         messages.info(request, "Request submitted successfully")
         return redirect("/library")
 
@@ -608,18 +586,14 @@ def checkIn(request):
             return redirect("/checkedOutBooks")
         return redirect("/checkedOutBooks")
 
+
 @csrf_protect
 def cancelBookRequest(request):
-    if request.method=="POST" and request.user.is_authenticated:
+    if request.method == "POST" and request.user.is_authenticated:
         id = request.POST.get("id")
+        print(id)
         RequestedBook = requestedBook.objects.get(id=id)
-        if not RequestedBook:
-            messages.info(request, "Requested Book not found")
-            return redirect("/previousBookRequests")
         boarder = azad_boarders.objects.get(emails=RequestedBook.email)
-        if not boarder:
-            messages.info(request, "Boarder not found")
-            return redirect("/previousBookRequests")
         boarder.books -= 1
         boarder.save()
         Book = book.objects.get(id=RequestedBook.bookID)
@@ -648,7 +622,6 @@ def search(request):
                 return redirect("/library")
 
     books = book.objects.all()
-    # messages.info(request, 'No books found')
     return redirect("/library")
 
 
@@ -740,40 +713,36 @@ def event(request, eventid):
     )
 
 
-
 def custom_logout(request):
     logout(request)
-    message = "Logged out successfully"
-    params = {"message": message}
-    return render(request, "index.html", params)
+    messages.info(request, "Logged out successfully.")
+    return redirect("/")
 
 
-
-def user_form_view(request):
-    if request.user.is_authenticated:
-        if request.method == 'POST':
-            form = UserForm(request.POST)
+def libraryFormView(request):
+    if request.user.is_authenticated and request.user.email in allowedEmailSecratary:
+        if request.method == "POST":
+            form = LibraryDutyForm(request.POST)
             if form.is_valid():
                 data = form.cleaned_data
                 # Example: Converting time and date to string before saving
-                time1_str = data['time1'].strftime('%H:%M:%S')
-                time2_str = data['time2'].strftime('%H:%M:%S')
-                date_str = data['date'].strftime('%Y-%m-%d')
-                
+                time1_str = data["time1"].strftime("%H:%M:%S")
+                time2_str = data["time2"].strftime("%H:%M:%S")
+                date_str = data["date"].strftime("%Y-%m-%d")
+
                 # Store serialized values in session
-                request.session['form_data'] = {
-                    'name': data['name'],
-                    'phone_number': data['phone_number'],
-                    'time1': time1_str,
-                    'time2': time2_str,
-                    'date': date_str,
+                request.session["form_data"] = {
+                    "name": data["name"],
+                    "phone_number": data["phone_number"],
+                    "time1": time1_str,
+                    "time2": time2_str,
+                    "date": date_str,
                 }
                 # return redirect('library')
-                return render(request, 'user.html', {'form': form})
+                return render(request, "user.html", {"form": form})
 
         else:
-            form = UserForm()
-            return render(request, 'user.html', {'form': form})
+            form = LibraryDutyForm()
+            return render(request, "user.html", {"form": form})
     messages.info(request, "Please login with valid ID")
     return redirect("/")
-
